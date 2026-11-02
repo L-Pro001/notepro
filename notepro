@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مفكرة ويندوز 10 - Windows 10 Sticky Notes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop') no-repeat center center fixed;
+            background-size: cover;
+            user-select: none;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Windows Glassmorphism / Acrylic Effect */
+        .acrylic-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .sticky-note {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            cursor: grab;
+        }
+        .sticky-note:active {
+            cursor: grabbing;
+        }
+        .sticky-note.dragging {
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
+
+        /* Colors for Notes */
+        .note-yellow { background: #fff2ab; color: #433810; }
+        .note-blue { background: #cce5ff; color: #004085; }
+        .note-green { background: #d4edda; color: #155724; }
+        .note-pink { background: #f8d7da; color: #721c24; }
+        .note-purple { background: #e2d9f3; color: #381460; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Trash Zone Drag Highlights */
+        .trash-active {
+            background: rgba(239, 68, 68, 0.4) !important;
+            border-color: #ef4444 !important;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen justify-between p-2 md:p-6 text-white select-none">
+
+    <!-- Top Desktop Bar / Header -->
+    <div class="flex justify-between items-center bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-t-xl border-b border-slate-700/50">
+        <div class="flex items-center gap-3">
+            <i class="fab fa-windows text-sky-400 text-xl"></i>
+            <span class="font-semibold text-sm tracking-wide">مفكرة ويندوز 10 (Windows 10 Notes)</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span>اسحب الملاحظة لإعادة ترتيبها أو ألقها في سلة المهملات للحذف 🗑️</span>
+        </div>
+    </div>
+
+    <!-- Main Window App Container -->
+    <div class="acrylic-panel flex-1 rounded-b-xl flex flex-col overflow-hidden relative">
+        
+        <!-- App Titlebar & Controls -->
+        <div class="bg-slate-800/90 px-4 py-3 flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/60">
+            <!-- Left Action Controls -->
+            <div class="flex items-center gap-2">
+                <button onclick="createNewNote()" class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-1.5 rounded text-sm font-medium transition flex items-center gap-2 shadow">
+                    <i class="fas fa-plus"></i> ملاحظة جديدة
+                </button>
+
+                <!-- Search Input -->
+                <div class="relative">
+                    <input type="text" id="searchInput" oninput="renderNotes()" placeholder="بحث في الملاحظات..." class="bg-slate-950/50 border border-slate-700 text-xs text-white rounded px-3 py-1.5 pr-8 focus:outline-none focus:border-sky-500 w-40 md:w-60">
+                    <i class="fas fa-search absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                </div>
+            </div>
+
+            <!-- Color Palette Selector for New Notes -->
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-300 hidden md:inline">اللون الافتراضي:</span>
+                <div class="flex items-center gap-1.5 bg-slate-900/60 p-1 rounded-lg border border-slate-700">
+                    <button onclick="setSelectedColor('yellow')" class="w-5 h-5 rounded-full bg-yellow-200 hover:scale-110 transition border border-black/20" title="أصفر"></button>
+                    <button onclick="setSelectedColor('blue')" class="w-5 h-5 rounded-full bg-blue-200 hover:scale-110 transition border border-black/20" title="أزرق"></button>
+                    <button onclick="setSelectedColor('green')" class="w-5 h-5 rounded-full bg-green-200 hover:scale-110 transition border border-black/20" title="أخضر"></button>
+                    <button onclick="setSelectedColor('pink')" class="w-5 h-5 rounded-full bg-red-200 hover:scale-110 transition border border-black/20" title="وردي"></button>
+                    <button onclick="setSelectedColor('purple')" class="w-5 h-5 rounded-full bg-purple-200 hover:scale-110 transition border border-black/20" title="بنفسجي"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Grid Area -->
+        <div id="notesContainer" class="flex-1 p-4 md:p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 align-start">
+            <!-- Sticky Notes Will Be Generated Here Dynamically -->
+        </div>
+
+        <!-- Drag to Delete Trash Zone at Bottom Right -->
+        <div id="trashZone" ondragover="handleDragOverTrash(event)" ondragleave="handleDragLeaveTrash(event)" ondrop="handleDropOnTrash(event)" class="absolute bottom-4 left-4 bg-slate-900/90 border-2 border-dashed border-red-500/50 text-red-400 px-5 py-3 rounded-xl flex items-center gap-3 transition-all duration-200 shadow-2xl z-20">
+            <i class="fas fa-trash-alt text-xl"></i>
+            <span class="text-xs font-semibold">ألقِ الملاحظة هنا للحذف</span>
+        </div>
+    </div>
+
+    <!-- Windows Taskbar -->
+    <div class="mt-2 bg-slate-950/90 backdrop-blur-md rounded-lg px-4 py-2 flex items-center justify-between text-xs border border-slate-800">
+        <div class="flex items-center gap-4">
+            <div class="hover:bg-slate-800 p-1.5 rounded cursor-pointer transition text-sky-400" title="Start Menu">
+                <i class="fab fa-windows text-base"></i>
+            </div>
+            <div id="clockDisplay" class="text-slate-300 font-mono text-xs">00:00:00</div>
+        </div>
+        <div id="notesCount" class="text-slate-400">إجمالي الملاحظات: 0</div>
+    </div>
+
+    <script>
+        // Default Configuration
+        let notes = JSON.parse(localStorage.getItem('win10_notes')) || [
+            { id: 1, title: 'مرحباً بك!', content: 'هذا تطبيق مفكرة بتصميم ويندوز 10.\nيمكنك إضافة، تعديل، وسحب الملاحظات وسحبها لسلة المهملات للحذف!', color: 'yellow', pinned: true },
+            { id: 2, title: 'تكتيكات التعلم', content: 'مراجعة الدروس اليومية لتقني مستغل معلوماتية وتطبيق البرامج بـ Python.', color: 'blue', pinned: false }
+        ];
+
+        let selectedColor = 'yellow';
+        let draggedNoteId = null;
+
+        function setSelectedColor(color) {
+            selectedColor = color;
+        }
+
+        // Render All Notes
+        function renderNotes() {
+            const container = document.getElementById('notesContainer');
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filteredNotes = notes.filter(n => 
+                n.title.toLowerCase().includes(searchQuery) || 
+                n.content.toLowerCase().includes(searchQuery)
+            );
+
+            // Sort: Pinned notes first
+            filteredNotes.sort((a, b) => b.pinned - a.pinned);
+
+            filteredNotes.forEach(note => {
+                const noteEl = document.createElement('div');
+                noteEl.className = `sticky-note note-${note.color} p-4 rounded-lg shadow-lg flex flex-col justify-between h-52 relative border border-black/10`;
+                noteEl.draggable = true;
+                noteEl.dataset.id = note.id;
+
+                // Drag Events
+                noteEl.ondragstart = (e) => {
+                    draggedNoteId = note.id;
+                    noteEl.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', note.id);
+                };
+                noteEl.ondragend = () => {
+                    noteEl.classList.remove('dragging');
+                };
+
+                noteEl.innerHTML = `
+                    <div>
+                        <!-- Header / Pin & Color Controls -->
+                        <div class="flex justify-between items-center mb-2 pb-1 border-b border-black/10">
+                            <input type="text" value="${escapeHtml(note.title)}" onchange="updateNote(${note.id}, 'title', this.value)" placeholder="عنوان..." class="font-bold bg-transparent focus:outline-none w-3/4 text-sm">
+                            <div class="flex items-center gap-2">
+                                <button onclick="togglePin(${note.id})" class="${note.pinned ? 'text-red-600' : 'text-slate-500'} hover:scale-125 transition" title="${note.pinned ? 'إلغاء التثبيت' : 'تثبيت في الأعلى'}">
+                                    <i class="fas fa-thumbtack"></i>
+                                </button>
+                                <button onclick="deleteNote(${note.id})" class="text-slate-600 hover:text-red-700 transition" title="حذف">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Content Area -->
+                        <textarea oninput="updateNote(${note.id}, 'content', this.value)" placeholder="اكتب ملاحظتك هنا..." class="w-full bg-transparent resize-none focus:outline-none text-xs h-32 leading-relaxed">${escapeHtml(note.content)}</textarea>
+                    </div>
+
+                    <!-- Footer Details -->
+                    <div class="flex justify-between items-center text-[10px] opacity-75 mt-2">
+                        <span>#${note.id}</span>
+                        <div class="flex gap-1">
+                            ${['yellow', 'blue', 'green', 'pink', 'purple'].map(c => `
+                                <button onclick="changeColor(${note.id}, '${c}')" class="w-3 h-3 rounded-full note-${c} border border-black/20 hover:scale-125 transition"></button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(noteEl);
+            });
+
+            document.getElementById('notesCount').innerText = `إجمالي الملاحظات: ${notes.length}`;
+            saveToStorage();
+        }
+
+        // Add Note
+        function createNewNote() {
+            const newNote = {
+                id: Date.now(),
+                title: 'ملاحظة جديدة',
+                content: '',
+                color: selectedColor,
+                pinned: false
+            };
+            notes.unshift(newNote);
+            renderNotes();
+        }
+
+        // Update Note Title or Content
+        function updateNote(id, key, value) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note[key] = value;
+                saveToStorage();
+            }
+        }
+
+        // Change Note Color
+        function changeColor(id, newColor) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note.color = newColor;
+                renderNotes();
+            }
+        }
+
+        // Toggle Pin State
+        function togglePin(id) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note.pinned = !note.pinned;
+                renderNotes();
+            }
+        }
+
+        // Delete Note
+        function deleteNote(id) {
+            notes = notes.filter(n => n.id !== id);
+            renderNotes();
+        }
+
+        // Trash Drag and Drop Handlers
+        function handleDragOverTrash(e) {
+            e.preventDefault();
+            document.getElementById('trashZone').classList.add('trash-active');
+        }
+
+        function handleDragLeaveTrash(e) {
+            document.getElementById('trashZone').classList.remove('trash-active');
+        }
+
+        function handleDropOnTrash(e) {
+            e.preventDefault();
+            document.getElementById('trashZone').classList.remove('trash-active');
+            if (draggedNoteId) {
+                deleteNote(draggedNoteId);
+                draggedNoteId = null;
+            }
+        }
+
+        // Save to LocalStorage
+        function saveToStorage() {
+            localStorage.setItem('win10_notes', JSON.stringify(notes));
+        }
+
+        // Helper to Escape HTML
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Update Real-time Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clockDisplay').innerText = now.toLocaleTimeString('ar-EG');
+        }
+
+        // Initial Operations
+        setInterval(updateClock, 1000);
+        updateClock();
+        renderNotes();
+    </script>
+</body>
+</html>
